@@ -1,21 +1,12 @@
-import java.util.ArrayList;
-import java.util.List;
-
 class Reservation {
-    private String reservationId;
     private String guestName;
     private String roomType;
-    private double totalAmount;
+    private int nights;
 
-    public Reservation(String reservationId, String guestName, String roomType, double totalAmount) {
-        this.reservationId = reservationId;
+    public Reservation(String guestName, String roomType, int nights) {
         this.guestName = guestName;
         this.roomType = roomType;
-        this.totalAmount = totalAmount;
-    }
-
-    public String getReservationId() {
-        return reservationId;
+        this.nights = nights;
     }
 
     public String getGuestName() {
@@ -26,71 +17,54 @@ class Reservation {
         return roomType;
     }
 
-    public double getTotalAmount() {
-        return totalAmount;
+    public int getNights() {
+        return nights;
     }
 }
 
-class BookingHistory {
-    private List<Reservation> confirmedReservations;
-
-    public BookingHistory() {
-        confirmedReservations = new ArrayList<>();
-    }
-
-    public void addReservation(Reservation reservation) {
-        confirmedReservations.add(reservation);
-    }
-
-    public List<Reservation> getAllReservations() {
-        return confirmedReservations;
-    }
-}
-
-class BookingReportService {
-    public void displayBookingHistory(BookingHistory history) {
-        List<Reservation> reservations = history.getAllReservations();
-
-        System.out.println("Booking History Report\n");
-
-        for (Reservation reservation : reservations) {
-            System.out.println("Reservation ID: " + reservation.getReservationId());
-            System.out.println("Guest Name: " + reservation.getGuestName());
-            System.out.println("Room Type: " + reservation.getRoomType());
-            System.out.println("Total Amount: " + reservation.getTotalAmount());
-            System.out.println();
-        }
-    }
-
-    public void displaySummary(BookingHistory history) {
-        List<Reservation> reservations = history.getAllReservations();
-        double totalRevenue = 0;
-
-        for (Reservation reservation : reservations) {
-            totalRevenue += reservation.getTotalAmount();
+class InvalidBookingValidator {
+    public void validate(Reservation reservation) {
+        if (reservation.getGuestName() == null || reservation.getGuestName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Guest name cannot be empty.");
         }
 
-        System.out.println("Booking Summary");
-        System.out.println("Total Confirmed Bookings: " + reservations.size());
-        System.out.println("Total Revenue: " + totalRevenue);
+        if (reservation.getRoomType() == null || reservation.getRoomType().trim().isEmpty()) {
+            throw new IllegalArgumentException("Room type cannot be empty.");
+        }
+
+        if (!reservation.getRoomType().equalsIgnoreCase("Single")
+                && !reservation.getRoomType().equalsIgnoreCase("Double")
+                && !reservation.getRoomType().equalsIgnoreCase("Suite")) {
+            throw new IllegalArgumentException("Invalid room type. Allowed: Single, Double, Suite.");
+        }
+
+        if (reservation.getNights() <= 0) {
+            throw new IllegalArgumentException("Number of nights must be greater than 0.");
+        }
     }
 }
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        BookingHistory history = new BookingHistory();
+        InvalidBookingValidator validator = new InvalidBookingValidator();
 
-        Reservation r1 = new Reservation("R101", "Ashi", "Single", 1500.0);
-        Reservation r2 = new Reservation("R102", "Suba", "Double", 2500.0);
-        Reservation r3 = new Reservation("R103", "Yamarth", "Suite", 5000.0);
+        Reservation validReservation = new Reservation("Ashi", "Single", 2);
+        Reservation invalidReservation = new Reservation("", "Luxury", -1);
 
-        history.addReservation(r1);
-        history.addReservation(r2);
-        history.addReservation(r3);
+        try {
+            validator.validate(validReservation);
+            System.out.println("Valid booking for " + validReservation.getGuestName());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Validation Error: " + e.getMessage());
+        }
 
-        BookingReportService reportService = new BookingReportService();
+        try {
+            validator.validate(invalidReservation);
+            System.out.println("Valid booking for " + invalidReservation.getGuestName());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Validation Error: " + e.getMessage());
+        }
 
-        reportService.displayBookingHistory(history);
-        reportService.displaySummary(history);
+        System.out.println("System continues running safely.");
     }
 }
