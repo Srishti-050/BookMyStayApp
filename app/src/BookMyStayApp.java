@@ -1,12 +1,25 @@
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 class Reservation {
+    private String reservationId;
     private String guestName;
     private String roomType;
-    private int nights;
+    private String roomId;
+    private boolean active;
 
-    public Reservation(String guestName, String roomType, int nights) {
+    public Reservation(String reservationId, String guestName, String roomType, String roomId) {
+        this.reservationId = reservationId;
         this.guestName = guestName;
         this.roomType = roomType;
-        this.nights = nights;
+        this.roomId = roomId;
+        this.active = true;
+    }
+
+    public String getReservationId() {
+        return reservationId;
     }
 
     public String getGuestName() {
@@ -17,54 +30,100 @@ class Reservation {
         return roomType;
     }
 
-    public int getNights() {
-        return nights;
+    public String getRoomId() {
+        return roomId;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void cancel() {
+        active = false;
     }
 }
 
-class InvalidBookingValidator {
-    public void validate(Reservation reservation) {
-        if (reservation.getGuestName() == null || reservation.getGuestName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Guest name cannot be empty.");
+class RoomInventory {
+    private Map<String, Integer> availability;
+
+    public RoomInventory() {
+        availability = new HashMap<>();
+        availability.put("Single", 4);
+        availability.put("Double", 2);
+        availability.put("Suite", 1);
+    }
+
+    public void incrementRoom(String roomType) {
+        availability.put(roomType, availability.get(roomType) + 1);
+    }
+
+    public int getAvailability(String roomType) {
+        return availability.get(roomType);
+    }
+}
+
+class BookingHistory {
+    private Map<String, Reservation> reservations;
+
+    public BookingHistory() {
+        reservations = new HashMap<>();
+    }
+
+    public void addReservation(Reservation reservation) {
+        reservations.put(reservation.getReservationId(), reservation);
+    }
+
+    public Reservation getReservation(String reservationId) {
+        return reservations.get(reservationId);
+    }
+}
+
+class CancellationService {
+    private Set<String> rollbackRoomIds;
+
+    public CancellationService() {
+        rollbackRoomIds = new HashSet<>();
+    }
+
+    public void cancelBooking(String reservationId, BookingHistory history, RoomInventory inventory) {
+        Reservation reservation = history.getReservation(reservationId);
+
+        if (reservation == null) {
+            System.out.println("Cancellation failed: Reservation not found.");
+            return;
         }
 
-        if (reservation.getRoomType() == null || reservation.getRoomType().trim().isEmpty()) {
-            throw new IllegalArgumentException("Room type cannot be empty.");
+        if (!reservation.isActive()) {
+            System.out.println("Cancellation failed: Reservation already cancelled.");
+            return;
         }
 
-        if (!reservation.getRoomType().equalsIgnoreCase("Single")
-                && !reservation.getRoomType().equalsIgnoreCase("Double")
-                && !reservation.getRoomType().equalsIgnoreCase("Suite")) {
-            throw new IllegalArgumentException("Invalid room type. Allowed: Single, Double, Suite.");
-        }
+        rollbackRoomIds.add(reservation.getRoomId());
+        inventory.incrementRoom(reservation.getRoomType());
+        reservation.cancel();
 
-        if (reservation.getNights() <= 0) {
-            throw new IllegalArgumentException("Number of nights must be greater than 0.");
-        }
+        System.out.println("Cancellation successful for Reservation ID: " + reservation.getReservationId());
+        System.out.println("Guest Name: " + reservation.getGuestName());
+        System.out.println("Room Type: " + reservation.getRoomType());
+        System.out.println("Released Room ID: " + reservation.getRoomId());
     }
 }
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        InvalidBookingValidator validator = new InvalidBookingValidator();
+        BookingHistory history = new BookingHistory();
+        RoomInventory inventory = new RoomInventory();
+        CancellationService cancellationService = new CancellationService();
 
-        Reservation validReservation = new Reservation("Ashi", "Single", 2);
-        Reservation invalidReservation = new Reservation("", "Luxury", -1);
+        Reservation r1 = new Reservation("R101", "Ashi", "Single", "S101");
+        history.addReservation(r1);
 
-        try {
-            validator.validate(validReservation);
-            System.out.println("Valid booking for " + validReservation.getGuestName());
-        } catch (IllegalArgumentException e) {
-            System.out.println("Validation Error: " + e.getMessage());
-        }
+        System.out.println("Before Cancellation - Single Rooms Available: "
+                + inventory.getAvailability("Single"));
 
-        try {
-            validator.validate(invalidReservation);
-            System.out.println("Valid booking for " + invalidReservation.getGuestName());
-        } catch (IllegalArgumentException e) {
-            System.out.println("Validation Error: " + e.getMessage());
-        }
+        cancellationService.cancelBooking("R101", history, inventory);
 
-        System.out.println("System continues running safely.");
+        System.out.println("After Cancellation - Single Rooms Available: "
+                + inventory.getAvailability("Single"));
     }
 }
